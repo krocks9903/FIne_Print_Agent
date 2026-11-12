@@ -2,6 +2,8 @@
 
 An AI agent that reads an important document and tells you the specific ways it can cost you money.
 
+[![CI](https://github.com/krocks9903/FIne_Print_Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/krocks9903/FIne_Print_Agent/actions/workflows/ci.yml)
+
 **Team DNK** — Krish Shah, Nolan Stillwell, Diego Guatarasma  
 CEN 4930 AI Agent Studio · Florida Gulf Coast University · Fall 2026  
 Instructor: Dr. Vinod Kumar Ahuja
@@ -71,15 +73,15 @@ docs/                     Architecture, eval, cost, user testing
 ## Setup (no cloud required)
 
 ```bash
-git clone https://github.com/krocks9903/TeamProject7_M3.git
-cd TeamProject7_M3
+git clone https://github.com/krocks9903/FIne_Print_Agent.git
+cd FIne_Print_Agent
 cp .env.example .env
 npm install
 npm test
 npm run dev
 ```
 
-Open http://localhost:3000. Default `MODEL_PROVIDER=mock` needs no API keys.
+Open http://localhost:3000. `.env.example` ships with `MODEL_PROVIDER=mock`, which needs no API keys. Requires Node 22 (the test script passes a glob to `node --test`).
 
 ### NRP / Anthropic (live model)
 
