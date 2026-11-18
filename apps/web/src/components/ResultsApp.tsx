@@ -96,6 +96,9 @@ export function ResultsApp({ detail, cacheHit, fileUrl, onReset }: Props) {
         ring={{ percent: 100, caption: "Analysis complete" }}
         actions={
           <>
+            <a className="btn btn--secondary btn--sm" href="/mailbox">
+              Inbox
+            </a>
             <button type="button" className="btn btn--secondary btn--sm" onClick={onReset}>
               <RefreshIcon size={16} /> Scan Another
             </button>

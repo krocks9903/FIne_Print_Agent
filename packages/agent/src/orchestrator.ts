@@ -11,6 +11,8 @@
 import {
   ALLOWED_MIME,
   MAX_UPLOAD_BYTES_DEFAULT,
+  redactDocumentPages,
+  redactFindingFields,
   type CreateScanResponse,
   type ScanAgentId,
   type ScanDetail,
@@ -22,6 +24,7 @@ import { runExtractorAgent } from "./extractor.js";
 import { getKnowledgeStore } from "./knowledge.js";
 import { resolveProvider } from "./provider.js";
 import { runRankerAgent } from "./ranker.js";
+import { scheduleRemindersForScan } from "./reminders.js";
 import { getStore, sha256, type LocalStore } from "./store.js";
 
 export interface UploadInput {
@@ -96,22 +99,40 @@ export class Orchestrator {
         // Reuse the cached findings on a new scan row, and parse once for this document's pages.
         await this.store.replaceFindings(
           scan.id,
-          cached.findings.map(({ id: _id, scan_id: _s, ...rest }) => rest)
+          cached.findings.map(({ id: _id, scan_id: _s, ...rest }) =>
+            redactFindingFields(rest)
+          )
         );
-        const pages = await parsePdfBuffer(input.buffer);
-        await this.store.setPages(doc.id, pages.pages);
+        const parsed = await parsePdfBuffer(input.buffer);
+        const { pages, redacted } = redactDocumentPages(parsed.pages);
+        await this.store.setPages(doc.id, pages);
         // New document id: re-chunk so document_search works for the cached copy too.
-        await getKnowledgeStore().replaceDocumentChunks(doc.id, pages.pages);
+        await getKnowledgeStore().replaceDocumentChunks(doc.id, pages);
+        try {
+          await scheduleRemindersForScan(
+            scan.id,
+            cached.findings.map(({ id: _i, scan_id: _s, ...rest }) =>
+              redactFindingFields(rest)
+            ),
+            {
+              documentName: input.filename,
+              pageText: pages.map((p) => p.text).join("\n"),
+            }
+          );
+        } catch {
+          /* reminders are best-effort */
+        }
         await this.store.updateScanStatus(scan.id, "done");
         await events.emit(
           "intake",
           "finish",
-          `Seen this exact file before: reused ${cached.findings.length} saved findings`,
+          `Seen this exact file before: reused ${cached.findings.length} saved findings` +
+            (redacted ? ` (${redacted} sensitive value(s) redacted)` : ""),
           {
             filename: input.filename,
             bytes: input.buffer.length,
             cacheHit: true,
-            pageCount: pages.meta.pageCount,
+            pageCount: parsed.meta.pageCount,
             findings: cached.findings.length,
             scanDone: true,
           }
@@ -185,13 +206,16 @@ export class Orchestrator {
     if (parsed.meta.empty) {
       throw new Error("PDF produced no extractable text (empty or encrypted)");
     }
-    await this.store.setPages(scan.document_id, parsed.pages);
-    const unreadable = unreadablePages(parsed.pages).length;
+    // Redact PII before storage, retrieval, model prompts, and citation checks.
+    const { pages, redacted } = redactDocumentPages(parsed.pages);
+    await this.store.setPages(scan.document_id, pages);
+    const unreadable = unreadablePages(pages).length;
     await events.emit(
       "parser",
       "finish",
       `Read ${parsed.meta.pageCount} page${parsed.meta.pageCount === 1 ? "" : "s"}` +
-        (unreadable ? `, ${unreadable} unreadable` : ""),
+        (unreadable ? `, ${unreadable} unreadable` : "") +
+        (redacted ? `, redacted ${redacted} sensitive value(s)` : ""),
       { pageCount: parsed.meta.pageCount, unreadablePages: unreadable }
     );
 
@@ -202,7 +226,7 @@ export class Orchestrator {
     const handoff = await runExtractorAgent({
       documentId: scan.document_id,
       scanId,
-      pages: parsed.pages,
+      pages,
       provider,
       events,
     });
@@ -221,10 +245,43 @@ export class Orchestrator {
     await this.store.replaceFindings(
       scanId,
       findings.map((f) => ({
-        ...f,
+        ...redactFindingFields(f),
         grounded: true as const,
       }))
     );
+
+    // Schedule local inbox + calendar reminders for dated notice/payment clauses.
+    const doc = await this.store.getDocument(scan.document_id);
+    const pageText = pages.map((p) => p.text).join("\n");
+    let reminderCount = 0;
+    try {
+      const reminders = await scheduleRemindersForScan(scanId, findings, {
+        documentName: doc?.original_filename,
+        pageText,
+      });
+      reminderCount =
+        reminders.calendar_events.length + reminders.reminder_emails.length;
+      if (reminderCount > 0) {
+        await events.emit(
+          "ranker",
+          "progress",
+          `Scheduled ${reminders.calendar_events.length} calendar reminder(s) and ${reminders.reminder_emails.length} inbox reminder(s)`,
+          {
+            calendarReminders: reminders.calendar_events.length,
+            emailReminders: reminders.reminder_emails.length,
+          }
+        );
+      }
+    } catch (err) {
+      // Reminders are best-effort; do not fail the scan.
+      console.warn(
+        JSON.stringify({
+          event: "reminder_schedule_failed",
+          scan_id: scanId,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
 
     await this.store.updateScanStatus(scanId, "done");
     await events.emit(
@@ -232,11 +289,13 @@ export class Orchestrator {
       "finish",
       `Ranked ${findings.length} risks` +
         (severity_raised ? `, raised severity on ${severity_raised}` : "") +
+        (reminderCount ? `, ${reminderCount} reminders set` : "") +
         ", scan complete",
       {
         ranked: findings.length,
         findings: findings.length,
         severityRaised: severity_raised,
+        reminders: reminderCount,
         scanDone: true,
       }
     );
@@ -262,8 +321,11 @@ export class Orchestrator {
     if (!scan) return null;
     const document = await this.store.getDocument(scan.document_id);
     if (!document) return null;
-    const findings = await this.store.getFindings(scanId);
-    const pages = (await this.store.getPages(scan.document_id)) ?? undefined;
+    const findings = (await this.store.getFindings(scanId)).map((f) =>
+      redactFindingFields(f)
+    );
+    const stored = await this.store.getPages(scan.document_id);
+    const pages = stored ? redactDocumentPages(stored).pages : undefined;
     return { scan, document, findings, pages };
   }
 }

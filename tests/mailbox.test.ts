@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { mkdtemp } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import {
   DEMO_INBOX,
   resetMailboxStoreForTests,
 } from "@fineprint/mcp-mailbox";
 import {
   extractDeadlineEvents,
+  scheduleEmailReminders,
   triageEmailBodyMock,
 } from "@fineprint/agent";
 
@@ -32,9 +34,18 @@ describe("mailbox + calendar (M3)", () => {
       source: "email",
     });
     assert.ok(
-      events.some((e) => e.starts_at.startsWith("2026-11-15")),
-      `expected Nov 15 2026, got ${JSON.stringify(events)}`
+      events.some((e) => e.starts_at.startsWith("2026-12-20")),
+      `expected Dec 20 2026, got ${JSON.stringify(events)}`
     );
+  });
+
+  it("fixture attachment PDFs resolve on disk", async () => {
+    for (const msg of DEMO_INBOX) {
+      for (const att of msg.attachments) {
+        if (!att.path) continue;
+        await access(att.path);
+      }
+    }
   });
 
   it("mock-triages contractor email for payment / retainer language", () => {
@@ -63,5 +74,38 @@ describe("mailbox + calendar (M3)", () => {
     });
     const after = await store.listCalendar();
     assert.equal(after.length, before.length + 1);
+  });
+
+  it("schedules inbox + lead-time calendar reminders from dated deadline text", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "fp-remind-"));
+    resetMailboxStoreForTests(dir);
+    process.env.FINEPRINT_MAILBOX_DIR = dir;
+
+    const result = await scheduleEmailReminders({
+      text: "Notice deadline: December 20, 2026. Payment due: December 20, 2026.",
+      related_scan_id: "scan-test-1",
+      source: "document_scan",
+      titlePrefix: "Lease",
+      leadDays: [14, 7],
+    });
+
+    assert.ok(result.calendar_events.length >= 1, "expected deadline calendar events");
+    assert.ok(
+      result.calendar_events.some((e) => e.starts_at.startsWith("2026-12-20")),
+      `expected Dec 20 deadline, got ${JSON.stringify(result.calendar_events.map((e) => e.starts_at))}`
+    );
+    assert.ok(
+      result.calendar_events.some((e) => /Reminder \(14d\)/i.test(e.title)),
+      "expected 14-day lead reminder"
+    );
+    assert.ok(result.reminder_emails.length >= 1, "expected inbox reminder email");
+    assert.ok(
+      result.reminder_emails.every((m) => m.labels.includes("reminder")),
+      "reminder emails must carry reminder label"
+    );
+
+    const store = resetMailboxStoreForTests(dir);
+    const listed = await store.listReminders();
+    assert.ok(listed.length >= 1);
   });
 });

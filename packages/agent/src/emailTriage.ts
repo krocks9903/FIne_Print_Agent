@@ -5,11 +5,16 @@
 
 import { readFile } from "node:fs/promises";
 import type { CalendarEvent, EmailMessage, RiskFinding } from "@fineprint/shared";
+import {
+  redactDocumentPages,
+  redactFindingFields,
+  redactSensitiveText,
+} from "@fineprint/shared";
 import { getMailboxStore } from "@fineprint/mcp-mailbox";
-import { extractDeadlineEvents } from "./deadlines.js";
 import { Orchestrator, type UploadInput } from "./orchestrator.js";
 import { mockExtractRisks, extractRisksWithModel } from "./persona.js";
 import { resolveProvider } from "./provider.js";
+import { scheduleEmailReminders } from "./reminders.js";
 import { rankFindings, validateCitations } from "./validator.js";
 import type { DocumentPage } from "@fineprint/shared";
 
@@ -24,10 +29,12 @@ export interface EmailTriageResult {
     error?: string;
   }>;
   calendar_events: CalendarEvent[];
+  reminder_emails: EmailMessage[];
 }
 
 function bodyAsPages(email: EmailMessage): DocumentPage[] {
-  return [{ page: 1, text: `${email.subject}\n\n${email.body_text}` }];
+  const raw = `${email.subject}\n\n${email.body_text}`;
+  return redactDocumentPages([{ page: 1, text: raw }]).pages;
 }
 
 export async function triageEmail(
@@ -41,17 +48,19 @@ export async function triageEmail(
   const pages = bodyAsPages(email);
   const provider = resolveProvider();
   const { output } = await extractRisksWithModel(provider, pages);
-  const body_findings = rankFindings(validateCitations(output.findings, pages));
+  const body_findings = rankFindings(
+    validateCitations(output.findings, pages)
+  ).map((f) => redactFindingFields(f));
 
-  const calendar_events: CalendarEvent[] = [];
-  for (const draft of extractDeadlineEvents(email.body_text, {
+  const scheduled = await scheduleEmailReminders({
+    text: redactSensitiveText(email.body_text).text,
+    findings: body_findings,
     related_email_id: email.id,
     source: "email",
-    titlePrefix: email.subject.slice(0, 40),
-  })) {
-    const saved = await mailbox.proposeCalendarEvent(draft);
-    calendar_events.push(saved);
-  }
+    titlePrefix: redactSensitiveText(email.subject.slice(0, 40)).text,
+  });
+  const calendar_events = scheduled.calendar_events;
+  const reminder_emails = scheduled.reminder_emails;
 
   const attachment_scans: EmailTriageResult["attachment_scans"] = [];
   if (opts.scanAttachments !== false) {
@@ -93,7 +102,13 @@ export async function triageEmail(
     }
   }
 
-  return { email, body_findings, attachment_scans, calendar_events };
+  return {
+    email,
+    body_findings,
+    attachment_scans,
+    calendar_events,
+    reminder_emails,
+  };
 }
 
 /** Offline helper for tests — body-only mock extraction */
