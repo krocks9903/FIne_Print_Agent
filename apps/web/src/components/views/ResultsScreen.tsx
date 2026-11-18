@@ -1,137 +1,41 @@
 "use client";
 
-import { motion } from "motion/react";
-import {
-  SEVERITY_LABELS,
-  SEVERITY_ORDER,
-  formatPageRanges,
-  biggestAmount,
-  countBySeverity,
-  summarySentence,
-} from "@/lib/findings";
-import { AnimatedNumber } from "../AnimatedNumber";
-import { AlertIcon, SeverityIcon } from "../Icons";
-import { QuoteCard } from "../QuoteCard";
-import { RiskCard } from "../RiskCard";
-import { RISK_LABELS } from "@/lib/findings";
+import { RISK_LABELS, SEVERITY_LABELS, SEVERITY_ORDER, biggestAmount, countBySeverity, formatPageRanges } from "@/lib/findings";
+import { DeadlinePanel } from "../DeadlinePanel";
 import type { ViewProps } from "./types";
 
-/** Screen A: headline, one card per finding, biggest amount, key clause. */
-export function ResultsScreen({ noun, findings, unreadable, onOpen }: ViewProps) {
-  const n = findings.length;
+export function ResultsScreen({ noun, findings, deadlines, unreadable, onOpen, onView }: ViewProps) {
   const counts = countBySeverity(findings);
   const biggest = biggestAmount(findings);
-  const key = findings[0];
-
+  const notice = findings.find(f => (f.risk_type === "notice_window" || f.risk_type === "auto_renewal") && f.values.some(v => v.kind === "days"));
+  const noticeValue = notice?.values.find(v => v.kind === "days");
+  const renewal = findings.find(f => f.risk_type === "auto_renewal");
+  const highest = SEVERITY_ORDER.find(s => counts[s] > 0);
+  const amounts = findings.flatMap(f => f.values.filter(v => v.kind === "money" || v.kind === "percent").map(v => ({ f, v })));
   return (
-    <div className="screen">
-      <header className="hero2">
-        <p className="eyebrow">The {noun} analysis is complete</p>
-        {n > 0 ? (
-          <h1 id="view-title" tabIndex={-1} className="hero2__title" aria-label={`FinePrint found ${n} ${n === 1 ? "way" : "ways"} this ${noun} can cost you money`}>
-            <span aria-hidden="true">
-              FinePrint found{" "}
-              <em className="hero2__n">
-                <AnimatedNumber text={String(n)} duration={0.5} />
-              </em>{" "}
-              {n === 1 ? "way" : "ways"} this {noun} can cost you money
-            </span>
-          </h1>
-        ) : (
-          <h1 id="view-title" tabIndex={-1} className="hero2__title">
-            FinePrint found no clauses it could quote
-          </h1>
-        )}
-        <p className="hero2__sub">
-          {n > 0
-            ? `We analyzed your ${noun} and found clauses that could cost you money. Here’s what matters most.`
-            : "No money-loss clauses found that we could quote. That’s not a guarantee, so skim the fee and termination sections yourself."}
-        </p>
-        {n > 0 ? (
-          <div className="hero2__summary">
-            <p className="visually-hidden">{summarySentence(findings)}</p>
-            <ul className="badges" aria-label="Risks by severity">
-              {SEVERITY_ORDER.filter((s) => counts[s] > 0).map((s, i) => (
-                <motion.li
-                  key={s}
-                  className={`badge badge--${s}`}
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.25, delay: 0.3 + i * 0.06 }}
-                >
-                  <SeverityIcon severity={s} />
-                  <span>
-                    {counts[s]} {SEVERITY_LABELS[s]}
-                  </span>
-                </motion.li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </header>
-
-      {unreadable.length > 0 ? (
-        <div className="notice notice--warn" role="note">
-          <AlertIcon size={20} />
-          <div className="notice__body">
-            <h2 className="notice__title">
-              {unreadable.length === 1 ? "1 page" : `${unreadable.length} pages`} could not be scanned
-            </h2>
-            <p>
-              Page{unreadable.length === 1 ? "" : "s"} {formatPageRanges(unreadable)} use fonts
-              FinePrint can&rsquo;t decode, so any fees or rules there were <strong>not</strong>{" "}
-              checked. Fee sheets and addenda often sit at the back of a lease. Read{" "}
-              {unreadable.length === 1 ? "that page" : "those pages"} yourself, or re-export the PDF
-              from the original program.
-            </p>
-          </div>
+    <div className="screen overview">
+      <header className="overview__heading">
+        <div>
+          <h1 id="view-title" tabIndex={-1}>{noun === "lease" ? "Lease" : "Contract"} Analysis Complete</h1>
+          <p>We found <strong>{findings.length} key {findings.length === 1 ? "item" : "items"}</strong> in your {noun}{highest ? `, including ${SEVERITY_ORDER.filter(s => counts[s]).map(s => `${counts[s]} ${s}`).join(", ")} severity findings` : ""}. Here’s what you need to know.</p>
         </div>
-      ) : null}
-
-      {n > 0 ? (
-        <>
-          <ul className="riskgrid" aria-label="Risks, most serious first">
-            {findings.map((f, i) => (
-              <RiskCard key={f.id} finding={f} index={i} onOpen={onOpen} />
-            ))}
-          </ul>
-
-          <div className="bottomrow">
-            <section className="panel amountcard" aria-labelledby="amount-title">
-              <h2 id="amount-title" className="panel__title">
-                Biggest dollar amount found
-              </h2>
-              {biggest ? (
-                <>
-                  <p className="amountcard__value">
-                    <span className="amountcard__big">
-                      <AnimatedNumber text={biggest.text} />
-                    </span>
-                    <span className="amountcard__unit">{RISK_LABELS[biggest.finding.risk_type]}</span>
-                  </p>
-                  <p className="amountcard__note">
-                    {biggest.finding.plain_english} This is the single largest amount in any
-                    quote, not a total of different risks.
-                  </p>
-                  <button
-                    type="button"
-                    className="page-link"
-                    onClick={() => onOpen({ findingId: biggest.finding.id, page: biggest.finding.page })}
-                  >
-                    Page {biggest.finding.page} →
-                  </button>
-                </>
-              ) : (
-                <p className="amountcard__note">
-                  No dollar amounts appear in the quoted clauses. Check the pages linked above
-                  for how fees are calculated.
-                </p>
-              )}
-            </section>
-            {key ? <QuoteCard finding={key} heading="Key clause" onOpen={onOpen} /> : null}
-          </div>
-        </>
-      ) : null}
+        <section className="risk-summary" aria-label="Highest finding severity">
+          <div><span className="eyebrow">Highest severity</span><strong>{highest ? SEVERITY_LABELS[highest] : "No findings"}</strong></div>
+          <div className="risk-summary__distribution"><span>{findings.length} findings reviewed</span><div className="severity-track" aria-label="Distribution of findings by severity">{SEVERITY_ORDER.filter(s => counts[s]).map(s => <span key={s} className={`severity-track--${s}`} style={{ flex: counts[s] }} title={`${counts[s]} ${s}`} />)}</div><small>Based on quoted clauses</small></div>
+        </section>
+      </header>
+      {unreadable.length > 0 && <div className="notice notice--warn" role="note"><p><strong>Some pages were not scanned.</strong> Page{unreadable.length === 1 ? "" : "s"} {formatPageRanges(unreadable)} could not be read. Review those pages in the original PDF.</p></div>}
+      <div className="metric-grid">
+        <section className="metric"><strong>{biggest?.text ?? "Not specified"}</strong><span>Largest quoted amount</span>{biggest && <button className="page-link" onClick={() => onOpen({ findingId: biggest.finding.id, page: biggest.finding.page })}>Page {biggest.finding.page} →</button>}</section>
+        <section className="metric"><strong>{noticeValue?.text ?? "Not specified"}</strong><span>Notice requirement</span>{noticeValue && notice && <button className="page-link" onClick={() => onOpen({ findingId: notice.id, page: notice.page })}>View clause →</button>}</section>
+        <section className="metric"><strong>{renewal ? "Auto-renewal" : "Not flagged"}</strong><span>{renewal ? "Renewal clause found" : "No renewal finding quoted"}</span>{renewal && <span className={`badge badge--${renewal.severity}`}>{SEVERITY_LABELS[renewal.severity]}</span>}</section>
+        <section className="metric"><strong>{findings.length}</strong><span>Total findings</span><span className="metric__note">{counts.critical + counts.high} high or critical</span></section>
+      </div>
+      <div className="overview-panels">
+        <section className="panel cost-breakdown"><h2 className="panel__title">Quoted Costs &amp; Fees</h2><p className="panel-caption">Individual amounts; not a combined total.</p><ul>{amounts.slice(0, 4).map(({ f, v }, i) => <li key={`${f.id}-${i}`}><span className="cost-dot"/><div><strong>{RISK_LABELS[f.risk_type]}</strong><small>{f.risk_type === "payment_obligation" ? "Payment obligation · schedule in clause" : f.risk_type === "deposit_forfeiture" ? "Deposit at risk · refund terms in clause" : "Conditional exposure · terms in clause"}</small></div><button className="page-link" onClick={() => onOpen({ findingId: f.id, page: f.page })}>{v.text}</button></li>)}</ul>{amounts.length === 0 && <p className="docmap__none">No dollar amounts or rates were quoted. Costs may still apply.</p>}<button className="link-btn" onClick={() => onView("costs")}>Review all costs &amp; fees →</button></section>
+        <section className="panel overview-deadlines"><DeadlinePanel items={deadlines.slice(0, 3)} onOpen={onOpen}/><button className="link-btn" onClick={() => onView("terms")}>All deadlines &amp; calendar reminders →</button></section>
+        <section className="panel top-risks"><h2 className="panel__title">Top Risks to Review</h2><ul>{findings.slice(0, 3).map(f => <li key={f.id} data-sev={f.severity}><div><h3>{RISK_LABELS[f.risk_type]}</h3><p>{f.plain_english}</p></div><button className="page-link" onClick={() => onOpen({ findingId: f.id, page: f.page })}>Page {f.page} →</button></li>)}</ul>{findings.length === 0 && <p className="docmap__none">No clauses were quoted. Review the document yourself before signing.</p>}</section>
+      </div>
     </div>
   );
 }

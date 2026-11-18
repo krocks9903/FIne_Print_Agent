@@ -11,8 +11,8 @@ export function Logo({ size = 32 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="fp-logo-grad" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#9bbcff" />
-          <stop offset="1" stopColor="#6f8cff" />
+          <stop stopColor="#b3c6ff" />
+          <stop offset="1" stopColor="#8d7cff" />
         </linearGradient>
       </defs>
       <path
@@ -31,8 +31,8 @@ export function Logo({ size = 32 }: { size?: number }) {
       />
       <path d="M17.5 3v6.5H24" stroke="url(#fp-logo-grad)" strokeWidth="2" strokeLinejoin="round" />
       <path d="M10 13h6M10 17h4" stroke="url(#fp-logo-grad)" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="21" cy="22" r="5" stroke="#5eead4" strokeWidth="2" />
-      <path d="m24.7 25.7 3.3 3.3" stroke="#5eead4" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="21" cy="22" r="5" stroke="#7fa6ff" strokeWidth="2" />
+      <path d="m24.7 25.7 3.3 3.3" stroke="#7fa6ff" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
 }

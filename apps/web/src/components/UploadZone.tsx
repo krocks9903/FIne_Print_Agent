@@ -1,19 +1,43 @@
 "use client";
 
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
-import { MAX_UPLOAD_MB } from "@/lib/errors";
-import { DocIcon, UploadIcon } from "./Icons";
+import { MAX_UPLOAD_MB, type ScanError } from "@/lib/errors";
+import { ErrorNotice } from "./ErrorNotice";
+import { CloudUploadIcon, DocIcon, UploadIcon } from "./Icons";
 
 interface Props {
   onFile: (file: File) => void;
   onSample: () => void;
   disabled?: boolean;
+  /** True while the sample PDF is being fetched. */
+  sampleBusy?: boolean;
+  /** The last scan or sample error, shown inside the card. */
+  error?: ScanError | null;
+  /** Offered after a timeout: keep waiting on the same scan. */
+  onResume?: () => void;
 }
 
-export function UploadZone({ onFile, onSample, disabled }: Props) {
+type Drag = "none" | "pdf" | "other";
+
+/** Browsers expose the dragged file's type during dragover (Safari may leave it blank). */
+function dragKind(e: React.DragEvent): Drag {
+  const item = e.dataTransfer.items?.[0];
+  if (!item || item.kind !== "file") return "other";
+  return item.type === "" || item.type === "application/pdf" ? "pdf" : "other";
+}
+
+const swap = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+  transition: { duration: 0.18 },
+};
+
+export function UploadZone({ onFile, onSample, disabled, sampleBusy, error, onResume }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
+  const depth = useRef(0);
+  const [drag, setDrag] = useState<Drag>("none");
 
   function pick(files: FileList | null) {
     const file = files?.[0];
@@ -22,79 +46,92 @@ export function UploadZone({ onFile, onSample, disabled }: Props) {
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  const heading =
+    drag === "pdf"
+      ? "Drop it to start the scan"
+      : drag === "other"
+        ? "Only PDF files can be scanned"
+        : "Drop your lease or contract PDF here";
+
   return (
-    <section className="upload" aria-labelledby="upload-title">
-      <motion.div
-        className={`dropzone${dragging ? " dropzone--active" : ""}`}
-        animate={{ scale: dragging ? 1.02 : 1 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        onPointerMove={(e) => {
-          // Spotlight follows the cursor without re-rendering React.
-          const el = e.currentTarget;
-          const r = el.getBoundingClientRect();
-          el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-          el.style.setProperty("--my", `${e.clientY - r.top}px`);
+    <section id="analyze" className="lp-upload" aria-labelledby="upload-title">
+      <div
+        className={`lp-drop${drag !== "none" ? ` lp-drop--${drag}` : ""}${error ? " lp-drop--error" : ""}`}
+        // enter/leave fire for every child, so count depth to know when the drag really left
+        onDragEnter={(e) => {
+          e.preventDefault();
+          depth.current += 1;
+          if (!disabled) setDrag(dragKind(e));
         }}
         onDragOver={(e) => {
           e.preventDefault();
-          if (!disabled) setDragging(true);
+          e.dataTransfer.dropEffect = disabled ? "none" : "copy";
         }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={() => {
+          depth.current = Math.max(0, depth.current - 1);
+          if (depth.current === 0) setDrag("none");
+        }}
         onDrop={(e) => {
           e.preventDefault();
-          setDragging(false);
+          depth.current = 0;
+          setDrag("none");
+          // non-PDFs still go through onFile so validation shows its usual message
           if (!disabled) pick(e.dataTransfer.files);
         }}
       >
-        <svg className="dropzone__border" aria-hidden="true" focusable="false">
-          <rect x="0" y="0" width="100%" height="100%" rx="20" ry="20" />
-        </svg>
         <motion.span
-          className="dropzone__icon"
+          className="lp-drop__icon"
           aria-hidden="true"
-          animate={dragging ? { y: [0, -10, 0] } : { y: 0 }}
-          transition={
-            dragging
-              ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.2 }
-          }
+          animate={drag === "pdf" ? { y: [0, -8, 0] } : { y: 0 }}
+          transition={drag === "pdf" ? { duration: 0.7, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
         >
-          <UploadIcon size={32} />
+          <CloudUploadIcon size={46} />
         </motion.span>
-        <h2 id="upload-title" className="dropzone__title">
-          Drop your lease or contract PDF
-        </h2>
-        <p className="dropzone__hint">
-          PDF only, up to {MAX_UPLOAD_MB} MB. Text-based PDFs work best (words you
-          can select).
+
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.h2 key={heading} id="upload-title" className="lp-drop__title" {...swap}>
+            {heading}
+          </motion.h2>
+        </AnimatePresence>
+        <p className="lp-drop__hint">
+          PDF only, up to {MAX_UPLOAD_MB} MB. We&rsquo;ll read it and show you what it can cost.
         </p>
-        <div className="dropzone__actions">
+
+        <AnimatePresence initial={false}>
+          {error ? (
+            <motion.div key={error.title} className="lp-drop__error" {...swap}>
+              <ErrorNotice error={error} onResume={onResume} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <div className="lp-drop__actions">
           {/* The input is the real, labelled control; the label is the visible button. */}
           <input
             ref={inputRef}
             id="pdf-input"
-            className="dropzone__input"
+            className="lp-drop__input"
             type="file"
             accept="application/pdf,.pdf"
             disabled={disabled}
             onChange={(e) => pick(e.target.files)}
           />
-          <label htmlFor="pdf-input" className="btn btn--primary">
-            Choose a PDF
+          <label htmlFor="pdf-input" className="lp-btn lp-btn--primary">
+            <UploadIcon size={20} />
+            {error ? "Choose another PDF" : "Choose a PDF"}
           </label>
           <button
             type="button"
-            className="btn btn--secondary"
+            className="lp-btn lp-btn--outline"
             onClick={onSample}
-            disabled={disabled}
+            disabled={disabled || sampleBusy}
+            aria-busy={sampleBusy || undefined}
           >
-            <DocIcon size={16} /> Try a sample lease
+            {sampleBusy ? <span className="lp-spinner" aria-hidden="true" /> : <DocIcon size={20} />}
+            {sampleBusy ? "Loading sample…" : "Try a sample lease"}
           </button>
         </div>
-      </motion.div>
-      <p className="upload__note">
-        Not sure what to upload? Try the sample lease to see how results look.
-      </p>
+      </div>
     </section>
   );
 }

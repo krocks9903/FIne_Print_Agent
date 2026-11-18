@@ -69,7 +69,18 @@ export function ResultsApp({ detail, cacheHit, fileUrl, onReset }: Props) {
     active ?? (findings[0] ? { findingId: findings[0].id, page: findings[0].page, nonce: 0 } : null);
 
   const unreadable = detail.unreadable_pages ?? [];
-  const common = { fileName, noun, findings, deadlines, cacheHit, unreadable, onOpen: open, onView: setView };
+  const common = {
+    scanId: detail.scan.id,
+    docHash: detail.scan.content_sha256,
+    fileName,
+    noun,
+    findings,
+    deadlines,
+    cacheHit,
+    unreadable,
+    onOpen: open,
+    onView: setView,
+  };
   const pages = detail.pages?.length ?? 0;
   const flagged = pagesWithFindings(detail.findings).length;
   const Noun = noun === "lease" ? "Lease" : "Contract";
@@ -85,11 +96,11 @@ export function ResultsApp({ detail, cacheHit, fileUrl, onReset }: Props) {
         ring={{ percent: 100, caption: "Analysis complete" }}
         actions={
           <>
-            <button type="button" className="btn btn--primary btn--sm" onClick={onReset}>
-              <RefreshIcon size={16} /> Scan another document
+            <button type="button" className="btn btn--secondary btn--sm" onClick={onReset}>
+              <RefreshIcon size={16} /> Scan Another
             </button>
             <CopyButton getText={() => buildSummaryText(detail)} />
-            <button type="button" className="btn btn--secondary btn--sm" onClick={() => window.print()}>
+            <button type="button" className="btn btn--primary btn--sm" onClick={() => window.print()}>
               <PrintIcon size={16} /> Download as PDF
             </button>
           </>
@@ -97,7 +108,7 @@ export function ResultsApp({ detail, cacheHit, fileUrl, onReset }: Props) {
       />
       <Disclaimer />
       <main id="main" className="view">
-        {view === "results" && <ResultsScreen {...common} />}
+        {view === "results" && <><ResultsScreen {...common} />{mapActive && <div className="overview-document"><DocumentMap pages={detail.pages} findings={findings} active={mapActive} fileUrl={fileUrl} fileName={fileName} onSelect={select} /></div>}</>}
         {view === "summary" && <SummaryScreen {...common} />}
         {view === "terms" && <TermsScreen {...common} />}
         {view === "costs" && <CostsScreen {...common} />}
@@ -135,3 +146,4 @@ export function ResultsApp({ detail, cacheHit, fileUrl, onReset }: Props) {
     </AppShell>
   );
 }
+

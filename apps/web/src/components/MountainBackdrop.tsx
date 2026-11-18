@@ -16,9 +16,9 @@ const PALETTE: Record<BackdropVariant, Record<(typeof LAYERS)[number]["id"], [st
     near: ["#1d2442", "#0b1426"],
   },
   ice: {
-    far: ["#dbe8f6", "#eef5fc"],
-    mid: ["#bcd3ec", "#e1ecf8"],
-    near: ["#a3c1e2", "#d3e2f3"],
+    far: ["#e3ddfb", "#f3f0ff"],
+    mid: ["#cdc2f4", "#e9e4fd"],
+    near: ["#b6a6ec", "#ddd5fa"],
   },
 };
 

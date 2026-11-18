@@ -4,13 +4,10 @@ import { MotionConfig, motion } from "motion/react";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Disclaimer } from "@/components/Disclaimer";
-import { ErrorNotice } from "@/components/ErrorNotice";
-import { Hero } from "@/components/Hero";
-import { MiniPreview } from "@/components/MiniPreview";
+import { Landing } from "@/components/landing/Landing";
 import { ResultsApp } from "@/components/ResultsApp";
 import { ScanScreen } from "@/components/ScanScreen";
 import { TopBar } from "@/components/TopBar";
-import { UploadZone } from "@/components/UploadZone";
 import { useScan } from "@/hooks/useScan";
 import { makeError } from "@/lib/errors";
 
@@ -25,9 +22,12 @@ const fade = {
 export default function HomePage() {
   const scan = useScan();
   const [sampleError, setSampleError] = useState(false);
+  const [sampleBusy, setSampleBusy] = useState(false);
 
   async function loadSample() {
+    if (sampleBusy) return;
     setSampleError(false);
+    setSampleBusy(true);
     try {
       const res = await fetch(SAMPLE_URL);
       if (!res.ok) throw new Error(String(res.status));
@@ -35,6 +35,8 @@ export default function HomePage() {
       scan.start(new File([blob], "sample-lease.pdf", { type: "application/pdf" }));
     } catch {
       setSampleError(true);
+    } finally {
+      setSampleBusy(false);
     }
   }
 
@@ -70,21 +72,16 @@ export default function HomePage() {
   } else {
     screen = (
       <motion.div key="landing" {...fade}>
-        <AppShell theme="dark" backdrop="dusk">
-          <TopBar title="Lease and contract scanner" />
-          <Disclaimer />
-          <main id="main" className="view view--landing" tabIndex={-1}>
-            <Hero />
-            {scan.error ? (
-              <ErrorNotice error={scan.error} onResume={scan.canResume ? scan.resume : undefined} />
-            ) : null}
-            {sampleError ? (
-              <ErrorNotice error={makeError("network", "We couldn't load the sample lease.")} />
-            ) : null}
-            <UploadZone onFile={scan.start} onSample={loadSample} />
-            <MiniPreview />
-          </main>
-        </AppShell>
+        <Landing
+          onFile={scan.start}
+          onSample={loadSample}
+          sampleBusy={sampleBusy}
+          error={
+            scan.error ??
+            (sampleError ? makeError("network", "We couldn't load the sample lease.") : null)
+          }
+          onResume={scan.canResume ? scan.resume : undefined}
+        />
       </motion.div>
     );
   }

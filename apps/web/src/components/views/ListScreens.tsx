@@ -4,6 +4,7 @@ import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { RISK_LABELS, countByRisk, type ViewFinding } from "@/lib/findings";
 import { AnimatedNumber } from "../AnimatedNumber";
+import { CalendarPanel } from "../CalendarPanel";
 import { DeadlinePanel } from "../DeadlinePanel";
 import { FilterChips, type RiskFilter } from "../FilterChips";
 import { QuoteCard } from "../QuoteCard";
@@ -22,7 +23,7 @@ function Title({ eyebrow, children }: { eyebrow: string; children: string }) {
 }
 
 /** Key Terms: deadlines plus every amount, rate, window and date found. */
-export function TermsScreen({ findings, deadlines, onOpen }: ViewProps) {
+export function TermsScreen({ scanId, docHash, fileName, noun, findings, deadlines, onOpen }: ViewProps) {
   const withValues = findings.filter((f) => f.values.length > 0);
   return (
     <div className="screen">
@@ -30,6 +31,14 @@ export function TermsScreen({ findings, deadlines, onOpen }: ViewProps) {
       <div className="termsgrid">
         <div className="sidepanel">
           <DeadlinePanel items={deadlines} onOpen={onOpen} />
+          <CalendarPanel
+            scanId={scanId}
+            docHash={docHash}
+            fileName={fileName}
+            noun={noun}
+            findings={findings}
+            deadlines={deadlines}
+          />
         </div>
         <section className="panel" aria-labelledby="values-title">
           <h2 id="values-title" className="panel__title">

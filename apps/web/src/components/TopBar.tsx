@@ -31,7 +31,7 @@ export function TopBar({ title, file, ring, actions }: Props) {
         ) : null}
         {ring ? (
           <div className="topbar__ring">
-            <ProgressRing percent={ring.percent} spinning={ring.spinning} label={`${ring.caption}, ${ring.percent} percent`} />
+            {ring.spinning ? <ProgressRing percent={ring.percent} spinning label={`${ring.caption}, ${ring.percent} percent`} /> : <span className="completion-check" aria-hidden="true">✓</span>}
             <span className="topbar__ringcap">{ring.caption}</span>
           </div>
         ) : null}
@@ -39,3 +39,4 @@ export function TopBar({ title, file, ring, actions }: Props) {
     </header>
   );
 }
+

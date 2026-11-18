@@ -15,6 +15,14 @@ export interface DeadlineInput {
   values: ExtractedValue[];
 }
 
+/** What a day count is measured from. "none": the clause doesn't say in a way we can use. */
+export type DeadlineAnchor = "before_end" | "after_due" | "none";
+
+/** When the deadline falls: a date written in the clause, or a day count from an anchor. */
+export type DeadlineWhen =
+  | { kind: "date"; text: string }
+  | { kind: "days"; days: number; business: boolean; anchor: DeadlineAnchor };
+
 export interface DeadlineItem {
   key: string;
   findingId: string;
@@ -24,9 +32,17 @@ export interface DeadlineItem {
   action: string;
   /** Days until it matters: the day count, or days from `now` to an upcoming date. Null if unknown or past. */
   sortDays: number | null;
+  /** Used to place the deadline on a calendar (see calendar/schedule.ts). */
+  when: DeadlineWhen;
 }
 
 const NOTICE_TYPES: RiskKey[] = ["notice_window", "auto_renewal"];
+
+function anchorFor(type: RiskKey): DeadlineAnchor {
+  if (NOTICE_TYPES.includes(type)) return "before_end";
+  if (type === "late_fee") return "after_due";
+  return "none";
+}
 
 function daysAction(type: RiskKey, d: string): string {
   if (NOTICE_TYPES.includes(type)) return `Give notice at least ${d} before the term ends`;
@@ -67,20 +83,28 @@ export function buildDeadlines(findings: DeadlineInput[], now: number = Date.now
     for (const v of f.values) {
       let action: string | null = null;
       let sortDays: number | null = null;
+      let when: DeadlineWhen | null = null;
       if (v.kind === "days") {
         action = daysAction(f.risk_type, v.text);
         sortDays = v.days ?? null;
+        when = {
+          kind: "days",
+          days: v.days ?? 0,
+          business: /\b(?:business|working)\b/i.test(v.text),
+          anchor: anchorFor(f.risk_type),
+        };
       } else if (v.kind === "date") {
         const before = f.sentence.slice(Math.max(0, v.index - 40), v.index);
         if (ACTION_BEFORE_DATE.test(before)) {
           action = dateAction(f.risk_type, v.text);
+          when = { kind: "date", text: v.text };
           // Only dates with a year can be placed on a timeline; past dates are never "soonest".
           const t = /\d{4}/.test(v.text) ? Date.parse(v.text) : NaN;
           const diff = Math.ceil((t - now) / 86_400_000);
           sortDays = Number.isFinite(diff) && diff >= 0 ? diff : null;
         }
       }
-      if (!action || seen.has(action)) continue;
+      if (!action || !when || seen.has(action)) continue;
       seen.add(action);
       items.push({
         key: `${f.id}-${v.index}`,
@@ -89,6 +113,7 @@ export function buildDeadlines(findings: DeadlineInput[], now: number = Date.now
         risk_type: f.risk_type,
         action,
         sortDays,
+        when,
       });
     }
   }

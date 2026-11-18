@@ -89,6 +89,11 @@ export function SummaryScreen({ noun, findings, deadlines, onOpen, onView }: Vie
         </section>
 
         <DeadlinePanel items={deadlines} onOpen={onOpen} />
+        {deadlines.length > 0 ? (
+          <button type="button" className="link-btn calpanel__jump" onClick={() => onView("terms")}>
+            Add these deadlines to your calendar →
+          </button>
+        ) : null}
 
         <section className="sidepanel__block" aria-labelledby="side-sources">
           <div className="sidepanel__row">

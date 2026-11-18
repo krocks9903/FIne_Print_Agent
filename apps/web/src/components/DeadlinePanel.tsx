@@ -17,7 +17,7 @@ export function DeadlinePanel({ items, onOpen }: Props) {
   return (
     <section className="deadlinepanel" aria-labelledby="deadline-title">
       <h2 id="deadline-title" className="deadlinepanel__title">
-        Key terms &amp; deadlines
+        Key Dates &amp; Deadlines
       </h2>
       {items.length === 0 ? (
         <p className="deadlinepanel__empty">
@@ -52,7 +52,7 @@ export function DeadlinePanel({ items, onOpen }: Props) {
                     </button>
                   </span>
                 </span>
-                {urgent ? <span className="urgent">Urgent</span> : null}
+                <span className="deadline-period">{d.when.kind === "days" ? `${d.when.days}${d.when.business ? " business" : ""} days` : d.when.text}</span>
               </motion.li>
             );
           })}
@@ -61,3 +61,4 @@ export function DeadlinePanel({ items, onOpen }: Props) {
     </section>
   );
 }
+

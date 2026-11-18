@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion } from "motion/react";
 import type { PageRef } from "@/lib/nav";
@@ -26,8 +26,8 @@ export function RiskCard({ finding: f, index, onOpen, tone = "dark", numbered }:
       data-sev={f.severity}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.3, ease: "easeOut", delay: index * 0.06 }}
+
+      transition={{ duration: 0.16, ease: "easeOut" }}
     >
       <div className="riskcard__top">
         <span className="riskcard__icon">
@@ -70,3 +70,4 @@ export function RiskCard({ finding: f, index, onOpen, tone = "dark", numbered }:
     </motion.li>
   );
 }
+

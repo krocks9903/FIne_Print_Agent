@@ -10,8 +10,8 @@ interface Props {
 /** Page frame: themed background + mountains + optional sidebar. */
 export function AppShell({ theme, backdrop, sidebar, children }: Props) {
   return (
-    <div className={`app app--${theme}`}>
-      <MountainBackdrop variant={backdrop} />
+    <div className={`app app--${theme}${sidebar ? " app--analysis" : ""}`}>
+      {!sidebar && <MountainBackdrop variant={backdrop} />}
       <div className={`shell${sidebar ? " shell--sidebar" : ""}`}>
         {sidebar}
         <div className="shell__main">{children}</div>
@@ -19,3 +19,4 @@ export function AppShell({ theme, backdrop, sidebar, children }: Props) {
     </div>
   );
 }
+

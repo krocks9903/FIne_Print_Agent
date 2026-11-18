@@ -3,6 +3,9 @@ import type { ViewFinding } from "@/lib/findings";
 import type { PageRef } from "@/lib/nav";
 
 export interface ViewProps {
+  scanId: string;
+  /** content_sha256 of the document; keeps calendar events per document. */
+  docHash: string;
   fileName: string;
   noun: "lease" | "contract";
   findings: ViewFinding[];

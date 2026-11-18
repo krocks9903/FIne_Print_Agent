@@ -30,6 +30,8 @@ interface Props {
 export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSelect }: Props) {
   const reduce = useReducedMotion();
   const [query, setQuery] = useState("");
+  const [zoom, setZoom] = useState(100);
+  const [severity, setSeverity] = useState("all");
   const bodyRef = useRef<HTMLDivElement>(null);
   const markRef = useRef<HTMLElement | null>(null);
 
@@ -44,11 +46,12 @@ export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSele
   );
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return byPage;
-    return byPage.filter((f) =>
+    const filtered = severity === "all" ? byPage : byPage.filter(f => f.severity === severity);
+    if (!q) return filtered;
+    return filtered.filter((f) =>
       `${RISK_LABELS[f.risk_type]} ${f.plain_english} ${f.quote}`.toLowerCase().includes(q)
     );
-  }, [byPage, query]);
+  }, [byPage, query, severity]);
 
   const pageNumbers = useMemo(() => {
     const set = new Set<number>(pages?.map((p) => p.page) ?? []);
@@ -96,7 +99,7 @@ export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSele
     <div className="docmap">
       <section className="panel docmap__list" aria-labelledby="map-list-title">
         <h2 id="map-list-title" className="panel__title">
-          Document Map
+          Findings ({findings.length})
         </h2>
         <label className="search">
           <SearchIcon size={16} />
@@ -108,11 +111,12 @@ export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSele
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
+        <div className="finding-filter" aria-label="Filter findings by severity">{["all", ...SEVERITY_ORDER].map(s => <button key={s} type="button" aria-pressed={severity === s} onClick={() => setSeverity(s)}>{s === "all" ? "All" : SEVERITY_LABELS[s as keyof typeof SEVERITY_LABELS]} ({s === "all" ? findings.length : findings.filter(f => f.severity === s).length})</button>)}</div>
         {shown.length === 0 ? (
           <p className="docmap__none">No clauses match &ldquo;{query}&rdquo;.</p>
         ) : (
           <ol className="docmap__items">
-            {shown.map((f, i) => (
+            {shown.map((f) => (
               <li key={f.id}>
                 <button
                   type="button"
@@ -121,10 +125,11 @@ export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSele
                   onClick={() => onSelect({ findingId: f.id, page: f.page })}
                 >
                   <span>
-                    {i + 1}. {RISK_LABELS[f.risk_type]}
+                    <span className="finding-row-title"><strong>{RISK_LABELS[f.risk_type]}</strong><span className={`badge badge--${f.severity}`}>{SEVERITY_LABELS[f.severity]}</span></span><span className="finding-row-explanation">{f.plain_english}</span>
                   </span>
-                  <span className="docmap__pg">p. {f.page}</span>
+                  <span className="docmap__pg">Page {f.page} →</span>
                 </button>
+                <details className="finding-detail"><summary>Source quote</summary><p>{f.quote}</p></details>
               </li>
             ))}
           </ol>
@@ -134,10 +139,10 @@ export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSele
       <section className="panel docmap__viewer" aria-label="Page viewer">
         <header className="docmap__bar">
           <h2 className="docmap__pagetitle">
-            Page {page}
+            Document · Page {page}
             {pages?.length ? ` of ${pages.length}` : ""}
           </h2>
-          <div className="docmap__nav">
+          <div className="docmap__nav"><div className="reader-zoom"><button type="button" aria-label="Zoom out" disabled={zoom <= 75} onClick={() => setZoom(z => z - 25)}>−</button><span aria-live="polite">{zoom}%</span><button type="button" aria-label="Zoom in" disabled={zoom >= 200} onClick={() => setZoom(z => z + 25)}>+</button></div>
             <button
               type="button"
               className="iconbtn"
@@ -159,7 +164,7 @@ export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSele
           </div>
         </header>
         <div className="docmap__scroll" ref={bodyRef} tabIndex={0} aria-label={`Text of page ${page}`}>
-          <div className="paperpage">
+          <div className="paperpage" style={{ zoom: zoom / 100 }}>
             {segments ? (
               <p className="page-text">
                 {segments.map((s, i) =>
@@ -243,3 +248,5 @@ export function DocumentMap({ pages, findings, active, fileUrl, fileName, onSele
     </div>
   );
 }
+
+
