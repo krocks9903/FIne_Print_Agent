@@ -121,7 +121,9 @@ Any questions for us before we wrap?
 
 > Without uploading again: if this tool emailed you when a landlord or company sent a renewal or fee notice, would you want that? What would make that helpful vs annoying?
 
-*(For M3 email-filter idea — optional; skip if tired.)*
+*(For M3 email-filter idea — optional; skip if tired. Do not turn this into a product tour unless they ask to see it.)*
+
+Filled session notes from M4 pilots: [user-testing-results.md](./user-testing-results.md).
 
 ---
 

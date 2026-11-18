@@ -36,6 +36,8 @@ Success: B quotes ⊆ page text; B plain_english clearer (“Trap:” / “You w
 
 Follow [user-testing-script.md](./user-testing-script.md). M3 deliverable is the **plan + script**; sessions can start after M3 if schedule slips — note dates in the cost doc.
 
+**M4 pilot status:** two external sessions run with the M3 script ([user-testing-results.md](./user-testing-results.md); Dunkin’ campus intercepts UT-01/UT-02, 18 Nov 2026; mean reuse likelihood 4.5/5).
+
 ## Failure modes we accept for M3
 
 - Keyword RAG misses paraphrased clauses (document for M4 embedding upgrade).

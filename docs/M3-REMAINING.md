@@ -38,7 +38,7 @@
 
 - [x] README reworded to match this list (CHANGES section, limitations). `docs/architecture.md` still needs the same pass.
 - [ ] Fill real token counts into `docs/m3-cost-analysis.md` after the NRP run (currently estimates).
-- [ ] Run at least a pilot of `docs/user-testing-script.md` with someone outside the team, or state the scheduled dates.
+- [x] Run at least a pilot of `docs/user-testing-script.md` with someone outside the team — see `docs/user-testing-results.md` (2 Dunkin’ campus intercepts, 18 Nov 2026, script §1–§6 + optional email probe).
 - [ ] 2-minute demo recording.
 - [ ] M3 PDF write-up (diagram + CHANGES + cost + eval plan).
 
