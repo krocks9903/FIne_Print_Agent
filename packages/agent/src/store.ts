@@ -194,13 +194,17 @@ export class LocalStore {
    */
   async findCachedScan(
     contentSha256: string,
-    model: string
+    model: string,
+    ownerId?: string
   ): Promise<{ scan: ScanRecord; findings: FindingRecord[] } | null> {
+    // A missing owner must never enable a cross-user cache lookup.
+    if (!ownerId) return null;
     const db = await this.load();
     const hit = [...db.scans]
       .reverse()
       .find(
         (s) =>
+          s.owner_id === ownerId &&
           s.content_sha256 === contentSha256 &&
           s.model === model &&
           s.prompt_version === PROMPT_VERSION &&

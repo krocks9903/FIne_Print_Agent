@@ -68,7 +68,7 @@ export class Orchestrator {
     this.checkUpload(input);
     const provider = resolveProvider();
     const hash = sha256(input.buffer);
-    const cached = await this.store.findCachedScan(hash, provider.model);
+    const cached = await this.store.findCachedScan(hash, provider.model, input.ownerId);
     const doc = await this.store.savePdf(
       input.ownerId,
       input.filename,

@@ -1,27 +1,29 @@
-import { NextResponse } from "next/server";
-import { getOrchestrator } from "@fineprint/agent";
+import { NextRequest, NextResponse } from "next/server";
+import { getOrchestrator, getStore } from "@fineprint/agent";
+import { getScanOwner } from "@/lib/scan-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TICK_MS = 250;
 const MAX_STREAM_MS = 5 * 60_000;
-/** Give up on a stream that has produced nothing for this long (scan gone or stuck). */
 const IDLE_MS = 30_000;
 const GRACE_MS = 1_500;
 
 const isTerminal = (e: { data?: Record<string, unknown> }) =>
   e.data?.scanDone === true || e.data?.scanFailed === true;
 
-/**
- * GET /api/scans/:id/events
- *  - Accept: text/event-stream (or ?stream=1): Server-Sent Events, resumable via Last-Event-ID.
- *    The stream always closes: on the scan's final event, when the scan is unknown or already
- *    finished, after IDLE_MS of silence, or when the client disconnects.
- *  - otherwise: JSON { events, done } for polling, using ?after=<seq>.
- */
-export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+/** GET /api/scans/:id/events: JSON polling or Server-Sent Events. */
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const ownerId = getScanOwner(req);
+  if (!ownerId) {
+    return NextResponse.json({ error: "session required" }, { status: 401 });
+  }
   const { id } = await ctx.params;
+  const scan = await getStore().getScan(id);
+  if (!scan || scan.owner_id !== ownerId) {
+    return NextResponse.json({ error: "scan not found" }, { status: 404 });
+  }
   const url = new URL(req.url);
   const orchestrator = getOrchestrator();
   const wantsStream =
@@ -30,12 +32,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const after = Number(
     url.searchParams.get("after") ?? req.headers.get("last-event-id") ?? 0
   ) || 0;
-
   if (!wantsStream) {
     const events = await orchestrator.getEvents(id, after);
-    return NextResponse.json({ events, done: events.some(isTerminal) });
+    return NextResponse.json({ events, done: events.some(isTerminal) }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
-
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -55,7 +57,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         }
       };
       req.signal.addEventListener("abort", () => close(false), { once: true });
-
       send("retry: 1500\n\n");
       try {
         while (!closed && Date.now() - started < MAX_STREAM_MS) {
@@ -68,7 +69,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           }
           if (events.length === 0) {
             const status = await orchestrator.getScanStatus(id);
-            // The final event is written just after the status flips, so allow a short grace.
             const finished = status === "done" || status === "failed";
             if (status === null || (finished && Date.now() - lastEventAt > GRACE_MS)) return close(true);
             if (Date.now() - lastEventAt > IDLE_MS) return close(true);
@@ -85,7 +85,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
+      "Cache-Control": "private, no-store, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     },

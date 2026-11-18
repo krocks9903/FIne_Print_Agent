@@ -5,20 +5,16 @@ export const dynamic = "force-dynamic";
 
 const TICK_MS = 400;
 const HEARTBEAT_MS = 15_000;
-/** The browser reconnects on its own with Last-Event-ID, so streams need not live forever. */
 const MAX_STREAM_MS = 5 * 60_000;
-
-/**
- * GET /api/events/stream: Server-Sent Events for ALL scans as they happen (sanitized).
- * Starts after ?after=<cursor> or Last-Event-ID; with neither, it starts from "now".
- * It ends when the client disconnects or after MAX_STREAM_MS.
- */
+/** Development-only Server-Sent Events for all scans. */
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV !== "development") {
+    return Response.json({ error: "not available" }, { status: 404 });
+  }
   const feed = getStore().feed;
   const url = new URL(req.url);
   const given = url.searchParams.get("after") ?? req.headers.get("last-event-id");
   let cursor = given !== null ? Number(given) || 0 : (await feed.list(0)).cursor;
-
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -53,7 +49,7 @@ export async function GET(req: Request) {
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
+      "Cache-Control": "private, no-store, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     },
