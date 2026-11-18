@@ -8,17 +8,20 @@ Same architecture as PDF scans: **ingest → extract with citations → validate
 |---|---|
 | MCP tools | `email_list`, `email_get`, `calendar_list`, `calendar_propose` in `@fineprint/mcp-mailbox` |
 | Demo inbox | Lease renewal, equipment invoice, contractor sign-request (+ filtered pizza spam) |
-| API | `GET /api/inbox`, `POST /api/inbox/:id/triage`, `GET|POST /api/calendar` |
-| UI | **Inbox** and **Calendar** tabs in `apps/web` |
+| Attachments | Repo-relative PDFs under `apps/web/public/` and `datasets/documents/` (no Downloads paths) |
+| Email reminders | After a PDF scan (or email triage), dated deadlines create **inbox reminder emails** + calendar events (deadline day and 14/7/1-day leads). Local mailbox only — nothing is sent externally. |
+| API | `GET /api/inbox`, `POST /api/inbox/:id/triage`, `GET\|POST /api/calendar`, `GET /api/calendar/ics`, `POST /api/scans/:id/reminders`, `GET /api/reminders` |
+| UI | **`/mailbox`** — Inbox, Calendar, and Reminders tabs. Home and scan results link here. Summary / Key terms → **Email reminders**. |
 | Claude/Cursor | `.cursor/mcp.json` → `fineprint-mailbox` (rebuild: `npm run mcp:rebuild`) |
 
 ```bash
 npm run mcp:rebuild
 npm run dev
-# open http://localhost:3000 → Inbox → Triage + scan attachments
+# open http://localhost:3000/mailbox → pick a message → Triage + set reminders
+# or scan a PDF, then Email reminders → Open inbox
 ```
 
-Attachment paths in fixtures point at PDFs under `/Users/n-dawg/Downloads/` (the three sample leases/contracts). Change paths in `packages/mcp-mailbox/src/fixtures.ts` if needed.
+Fixture attachment paths are resolved from the repo root in `packages/mcp-mailbox/src/fixtures.ts`. Bumping `MAILBOX_FIXTURES_VERSION` reseeds local `data/mailbox/mailbox.json`.
 
 ## Shape
 
@@ -32,10 +35,10 @@ email_list / email_get
 triageEmail() — body findings + optional PDF attachment scans
         │
         ├── RiskFinding[] (payment_obligation + traps)
-        └── calendar_propose (deadlines from body text)
+        └── scheduleEmailReminders (calendar + inbox reminder emails)
                 │
                 ▼
-Calendar tab / calendar_list
+/mailbox Calendar + Reminders tabs · Download .ics
 ```
 
 ## Next (real Gmail / Google Calendar)
@@ -44,7 +47,7 @@ Calendar tab / calendar_list
 |---|---|---|
 | **Gmail + Calendar OAuth** behind same MCP tool names | Real inbox; class-friendly | Token storage, consent screens |
 | **Forward-to-address** | No mailbox OAuth | Weaker UX |
-| **.ics export** from proposed events | Easy “add to calendar” | One-way |
+| **.ics export** | Live now via `/api/calendar/ics` | One-way |
 
 Keep tool names stable when swapping fixtures → Gmail so Claude configs and the web API do not change.
 
@@ -65,6 +68,6 @@ Keep tool names stable when swapping fixtures → Gmail so Claude configs and th
 
 ## Minimal M3 vertical slice
 
-1. MCP `email_search` + `email_get` against a demo inbox with 3 planted threads.
+1. MCP `email_list` + `email_get` against a demo inbox with 3 planted threads.
 2. If attachment is PDF → existing FinePrint scan.
-3. UI tab: “From email” alongside upload.
+3. UI: `/mailbox` “From email” alongside PDF upload on the home page.

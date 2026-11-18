@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { redactSensitiveText } from "@fineprint/shared";
 import { getMailboxStore } from "@fineprint/mcp-mailbox";
 
 export const runtime = "nodejs";
@@ -11,10 +12,10 @@ export async function GET(req: Request) {
     query,
     messages: messages.map((m) => ({
       id: m.id,
-      from: m.from,
-      subject: m.subject,
+      from: redactSensitiveText(m.from).text,
+      subject: redactSensitiveText(m.subject).text,
       received_at: m.received_at,
-      snippet: m.snippet,
+      snippet: redactSensitiveText(m.snippet).text,
       labels: m.labels,
       attachment_count: m.attachments.length,
     })),

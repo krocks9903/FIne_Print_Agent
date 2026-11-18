@@ -236,6 +236,7 @@ export type EmailTriageLabel =
   | "needs_review"
   | "payment_or_fee"
   | "renewal_or_deadline"
+  | "reminder"
   | "noise";
 
 export interface EmailAttachmentMeta {
@@ -283,3 +284,19 @@ export interface CalendarEvent {
   quote?: string;
   notes?: string;
 }
+
+/** Result of scheduling email + calendar reminders for a scan or email. */
+export interface ReminderScheduleResult {
+  calendar_events: CalendarEvent[];
+  reminder_emails: EmailMessage[];
+  skipped: string[];
+}
+
+export {
+  redactSensitiveText,
+  redactDocumentPages,
+  redactFindingFields,
+  type RedactionKind,
+  type RedactionHit,
+  type RedactionResult,
+} from "./redact.js";

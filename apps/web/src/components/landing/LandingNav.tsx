@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CloseIcon, FolderIcon, HelpIcon, HomeIcon, MenuIcon, PlayBadgeIcon } from "../Icons";
+import { ClockIcon, CloseIcon, FolderIcon, HelpIcon, HomeIcon, MenuIcon, PlayBadgeIcon } from "../Icons";
 import { Logo } from "../Logo";
 
 type SectionId = "analyze" | "how-it-works" | "faq";
@@ -92,6 +92,14 @@ export function LandingNav({ onSample, sampleBusy }: Props) {
         <FolderIcon size={20} />
         {sampleBusy ? "Loading sample…" : "Sample Lease"}
       </button>
+      <a
+        href="/mailbox"
+        className="lp-nav__link"
+        onClick={() => setOpen(false)}
+      >
+        <ClockIcon size={20} />
+        Inbox
+      </a>
       {LINKS.slice(1).map(({ id, label, Icon }) => (
         <a
           key={id}

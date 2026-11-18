@@ -175,6 +175,10 @@ export function publicEvent(e: ScanEvent): ScanEvent {
     // defence in depth: anything between double quotes could be document text
     message = message.replace(/"[^"]*"/g, '"…"');
   }
+  // Strip residual PII patterns from free-form messages (emails, phones, SSNs).
+  message = message
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_EMAIL]")
+    .replace(/\b\d{3}[-\s]\d{2}[-\s]\d{4}\b/g, "[REDACTED_SSN]");
   if (message.length > MAX_FEED_MESSAGE) message = message.slice(0, MAX_FEED_MESSAGE - 1) + "…";
 
   return {

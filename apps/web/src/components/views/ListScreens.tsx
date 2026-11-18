@@ -30,7 +30,7 @@ export function TermsScreen({ scanId, docHash, fileName, noun, findings, deadlin
       <Title eyebrow="From your quotes">Key terms</Title>
       <div className="termsgrid">
         <div className="sidepanel">
-          <DeadlinePanel items={deadlines} onOpen={onOpen} />
+          <DeadlinePanel items={deadlines} onOpen={onOpen} scanId={scanId} />
           <CalendarPanel
             scanId={scanId}
             docHash={docHash}

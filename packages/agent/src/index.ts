@@ -30,6 +30,16 @@ export {
   type ScanEmitter,
 } from "./events.js";
 export { extractDeadlineEvents } from "./deadlines.js";
+export {
+  scheduleEmailReminders,
+  scheduleRemindersForScan,
+  DEFAULT_LEAD_DAYS,
+} from "./reminders.js";
+export {
+  redactSensitiveText,
+  redactDocumentPages,
+  redactFindingFields,
+} from "@fineprint/shared";
 export { triageEmail, triageEmailBodyMock } from "./emailTriage.js";
 export { runExtractorAgent } from "./extractor.js";
 export { runRankerAgent } from "./ranker.js";

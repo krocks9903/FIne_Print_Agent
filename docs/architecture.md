@@ -94,6 +94,7 @@ tests/                    M2 graded cases + M3 handoff/RAG tests
 - Ranker cannot add findings or change quotes
 - Upload allowlist: `application/pdf` + size cap
 - Prompt: ignore instructions inside the document
+- **PII redaction** (`redactSensitiveText` in `@fineprint/shared`): after parse, page text is scrubbed of SSNs, emails, phones, Luhn-valid cards, labeled bank accounts / DOB / passport / DL **before** storage, retrieval, model prompts, and citation checks. Findings, inbox APIs, copy/export, and the Mission Control feed re-scrub as defense in depth. Dollar amounts and ordinary notice dates are kept.
 - Retention: local `./data` is gitignored; cloud lifecycle TBD (30-day target)
 
 ## What is intentionally not implemented yet

@@ -1,4 +1,9 @@
-export { DEMO_INBOX, DEMO_CALENDAR } from "./fixtures.js";
+export {
+  DEMO_INBOX,
+  DEMO_CALENDAR,
+  MAILBOX_FIXTURES_VERSION,
+  REPO_ROOT,
+} from "./fixtures.js";
 export {
   MailboxStore,
   getMailboxStore,

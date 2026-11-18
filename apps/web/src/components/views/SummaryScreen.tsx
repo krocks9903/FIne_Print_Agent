@@ -9,7 +9,7 @@ import { SourcesList } from "../SourcesList";
 import type { ViewProps } from "./types";
 
 /** Screen D: key takeaways on paper, plus a dark side panel. */
-export function SummaryScreen({ noun, findings, deadlines, onOpen, onView }: ViewProps) {
+export function SummaryScreen({ noun, findings, deadlines, scanId, onOpen, onView }: ViewProps) {
   const biggest = biggestAmount(findings);
   const serious = findings.filter((f) => f.severity === "high" || f.severity === "critical");
 
@@ -88,7 +88,7 @@ export function SummaryScreen({ noun, findings, deadlines, onOpen, onView }: Vie
           )}
         </section>
 
-        <DeadlinePanel items={deadlines} onOpen={onOpen} />
+        <DeadlinePanel items={deadlines} onOpen={onOpen} scanId={scanId} />
         {deadlines.length > 0 ? (
           <button type="button" className="link-btn calpanel__jump" onClick={() => onView("terms")}>
             Add these deadlines to your calendar →

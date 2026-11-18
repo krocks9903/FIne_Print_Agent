@@ -7,6 +7,7 @@ import type {
 } from "@fineprint/shared";
 import { buildDeadlines, type DeadlineItem } from "./deadlines";
 import { extractValues, type ExtractedValue } from "./extract";
+import { redactSensitiveText } from "./redact";
 import { pickSentence, splitSentences, stripHeading, toDisplayCase } from "./sentences";
 
 export const RISK_LABELS: Record<RiskType, string> = {
@@ -130,7 +131,7 @@ export function buildSummaryText(detail: ScanDetail): string {
     "",
     "FinePrint only flags clauses it can quote. It may miss things, and it's not legal advice."
   );
-  return lines.join("\n");
+  return redactSensitiveText(lines.join("\n")).text;
 }
 
 export const PROGRESS_STEPS = [
