@@ -15,7 +15,7 @@ Uploaded contracts are **untrusted, PII-bearing data**. Pipeline: ingest → par
 | Agents | `@fineprint/agent` Extractor → Ranker + OpenAI-compatible client (`nrp` \| `anthropic` \| `mock`) |
 | Knowledge | Local chunk store + stipulation patterns; pgvector migration for cloud |
 | Tooling | MCP `document_parse` + `document_search` in `@fineprint/mcp-document`; mailbox MCP for inbox demos |
-| Contracts | `@fineprint/shared` (`PROMPT_VERSION=m3.v1`) |
+| Contracts | `@fineprint/shared` (`PROMPT_VERSION=m3.v3`) |
 
 ## System context
 
